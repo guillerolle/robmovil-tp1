@@ -1,0 +1,64 @@
+\documentclass[]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+%opening
+\title{}
+\author{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\section*{Ejercicio 2}
+Rotación $R_x(\alpha)$:
+\begin{equation}
+	R_x(\alpha) = \begin{bmatrix}
+		1 & 0 & 0 \\ 
+		0 & cos(\alpha) & -\sin(\alpha) \\ 0 & \sin(\alpha) & \cos(\alpha)
+	\end{bmatrix} = \begin{bmatrix}
+		1 & 0 & 0 \\
+		0 & -0,2225209340 & -0,9749279122 \\ 
+		0 & 0,9749279122 & 0,2225209340
+	\end{bmatrix}
+\end{equation}
+
+Rotación $R_x(\alpha)R_y(\beta)R_z(\gamma)$:
+\begin{equation}
+	\begin{bmatrix}
+		3.0616e-17 &  5.3029e-17  & 1.0000e+00 \\
+		6.8017e-01 &  7.3305e-01 & -5.9697e-17 \\
+		-7.3305e-01 &  6.8017e-01 & -1.3625e-17
+	\end{bmatrix}
+\end{equation}
+
+\textbf{Calculo yaw pitch y roll}
+
+yaw $\gamma$:
+\begin{equation}
+	\gamma = \arctan_2(R_{12},R_{11}) = 0/0 \text{~Kaputt}
+\end{equation}
+
+pitch $\beta$:
+\begin{equation}
+	\beta = \arctan_2(-)
+\end{equation}
+
+\section*{Ejercicio 3}
+
+Para pasar de A a W
+\begin{equation}
+	{}^W\xi_A = \begin{bmatrix}
+		\cos(\theta) & -\sin(\theta) & A_x \\
+		\sin(\theta) & \cos(\theta) & A_y \\ 0 & 0 & 1
+	\end{bmatrix}
+\end{equation}
+Para pasar de W a A
+\begin{equation}
+	{}^A\xi_W = {}^W\xi_A^{-1}
+\end{equation}
+\end{document}
