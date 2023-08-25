@@ -6,15 +6,6 @@ plt.rcParams.update({  # Permite usar LaTeX en los plots
     "font.family": "Helvetica"
 })
 
-
-def polar2z(r, theta):
-    return r * np.exp(1j * theta)
-
-
-def z2polar(z):
-    return np.abs(z), np.angle(z)
-
-
 halignmap = {
     'c': 'center',
     'r': 'right',
@@ -27,70 +18,111 @@ valignmap = {
 }
 
 
-def plot_referenceFrame_fromWorld(pose, axs=None, symbol="", align="cc", refFrame_World=(0, 0, 0)):
-    if axs is None:
-        axs = plt
+class Pose:
+    def __init__(self, x=0.0, y=0.0, theta=0.0, referenceFrame=None, symbol=""):
+        self.x = x
+        self.y = y
+        self.theta = theta
+        self.frame = referenceFrame
+        self.symbol = symbol
 
-    rang = np.deg2rad(refFrame_World[2]);
-    rfX = np.exp(1j * rang)  # ref frame X axis
-    rfY = rfX * 1j  # ref frame Y axis
-    rotPoint = (rfX * pose[0] + rfY * pose[1])
+    def getPoseV(self):
+        return np.ndarray((self.x, self.y, self.theta))
 
-    ang = np.deg2rad(pose[2]) + rang;
-    fX = np.exp(1j * ang)  # frame X axis
-    fY = fX * 1j  # frame Y axis
-    axs.quiver((refFrame_World[0], refFrame_World[0] + np.real(rotPoint), refFrame_World[0] + np.real(rotPoint)),
-               (refFrame_World[1], refFrame_World[1] + np.imag(rotPoint), refFrame_World[1] + np.imag(rotPoint)),
-               (np.real(rotPoint), np.real(fX), np.real(fY)),
-               (np.imag(rotPoint), np.imag(fX), np.imag(fY)),
-               color=['k', 'r', 'g'],
-               angles='xy', scale_units='xy', scale=1)
-    axs.text(refFrame_World[0] + np.real(rotPoint), refFrame_World[1] + np.imag(rotPoint), "$" + symbol + "$",
-             horizontalalignment=halignmap[align[0]], verticalalignment=valignmap[align[1]], color='k')
-    axs.text(refFrame_World[0] + np.real(rotPoint) + np.real(fX), refFrame_World[1] + np.imag(rotPoint) + np.imag(fX),
-             r"$x_" + symbol + "$",
-             horizontalalignment='left', verticalalignment='top', color='r')
-    axs.text(refFrame_World[0] + np.real(rotPoint) + np.real(fY), refFrame_World[1] + np.imag(rotPoint) + np.imag(fY),
-             r"$y_" + symbol + "$",
-             horizontalalignment='right', verticalalignment='top', color='g')
+    def getPoseZ(self):
+        return self.x + 1j * self.y
 
+    def getPosition(self):
+        return np.array((self.x, self.y))
 
-def plot_point(position, axs=None, symbol="", align="cc", refFrame_World=(0, 0, 0)):
-    if axs is None:
-        axs = plt
+    def getPositionInhomogeneous(self):
+        return np.array((self.x, self.y, 1))
 
-    ang = np.deg2rad(refFrame_World[2]);
-    fX = np.exp(1j * ang)  # frame X axis
-    fY = fX * 1j  # frame Y axis
-    rotPoint = (fX * position[0] + fY * position[1])
+    def drawPoseVector(self, axs=plt, color='k'):
+        frame_world_coords = Pose(x=0, y=0, theta=0)
+        if self.frame is not None:
+            frame_world_coords = self.frame.pose.getWorldCoords()
+        self_world_coords = self.getWorldCoords()
+        axs.quiver(frame_world_coords.x, frame_world_coords.y,
+                   self_world_coords.x - frame_world_coords.x, self_world_coords.y - frame_world_coords.y,
+                   color=color,
+                   angles='xy', scale_units='xy', scale=1)
+        axs.text(self_world_coords.x, self_world_coords.y, self.symbol,
+                 horizontalalignment='right', verticalalignment='top', color='k')
+        # plt.show()
 
-    axs.quiver(refFrame_World[0], refFrame_World[1], np.real(rotPoint), np.imag(rotPoint),
-               color='k',
-               angles='xy', scale_units='xy', scale=1)
-    axs.text(refFrame_World[0] + np.real(rotPoint), refFrame_World[1] + np.imag(rotPoint), symbol,
-             horizontalalignment=halignmap[align[0]], verticalalignment=valignmap[align[1]],
-             color='k')
+    def getWorldCoords(self) -> "Pose":
+        if self.frame is not None:
+            vector = self.frame.homogeneous_fromme_toworld() @ self.getPositionInhomogeneous()
+            angle = self.frame.angle_fromworld() + self.theta
+            return Pose(x=vector[0], y=vector[1], theta=angle)
+        else:
+            return self
+
+    def __str__(self):
+        return "x= " + str(self.x) + "\ty= " + str(self.y) + "\tdeg= " + str(np.rad2deg(self.theta))
 
 
-if __name__ == "__main__":
-    poseA_W = np.array((2, 3, 45))
-    poseB_A = np.array((1, 1, -45))
-    p1_W = np.array((1, 5))
-    p2_A = np.array((1, 2))
+class ReferenceFrame:
+    def __init__(self, x=0.0, y=0.0, theta=0.0, parent: "ReferenceFrame" = None, symbol="", align="cc"):
+        self.pose = Pose(x, y, theta, parent)
+        self.parent = parent
+        self.symbol = symbol
+        self.align = align
 
-    thA = np.deg2rad(poseA_W[2])
-    xi_A_W = np.array(((np.cos(thA), -np.sin(thA), poseA_W[0]),
-                       (np.sin(thA), np.cos(thA), poseA_W[1]),
-                       (0, 0, 1)))
-    thB = np.deg2rad(poseB_A[2])
-    xi_B_A = np.array(((np.cos(thB), -np.sin(thB), poseB_A[0]),
-                       (np.sin(thB), np.cos(thB), poseB_A[1]),
-                       (0, 0, 1)))
+    def homogeneous_fromme_toparent(self):
+        return np.array(((np.cos(self.pose.theta), -np.sin(self.pose.theta), self.pose.x),
+                         (np.sin(self.pose.theta), np.cos(self.pose.theta), self.pose.y),
+                         (0, 0, 1)))
 
-    xi_W_A = np.linalg.inv(xi_A_W)
-    xi_A_B = np.linalg.inv(xi_B_A)
+    def homogeneous_fromparent_tome(self):
+        return np.linalg.inv(self.homogeneous_fromme_toparent())
 
-    # print(xi_A_W @ xi_B_A @ np.array((0, 0, 1)))
+    def drawReferenceFrame(self, axs=plt):
+        origin = self.pose.getWorldCoords()
+        xAxis = Pose(x=1, y=0, referenceFrame=self)
+        yAxis = Pose(x=0, y=1, referenceFrame=self)
+        # origin.drawPoseVector()
+        xAxis.drawPoseVector(color='r')
+        yAxis.drawPoseVector(color='g')
+        self.pose.drawPoseVector(color='b')
+        axs.text(origin.x, origin.y, self.symbol,
+                 horizontalalignment=halignmap[self.align[0]], verticalalignment=valignmap[self.align[1]], color='k')
+        axs.text(xAxis.getWorldCoords().x, xAxis.getWorldCoords().y, r"$x_{" + self.symbol[1:-1] + "}$",
+                 horizontalalignment='left', verticalalignment='top', color='r')
+        axs.text(yAxis.getWorldCoords().x, yAxis.getWorldCoords().y, r"$y_{" + self.symbol[1:-1] + "}$",
+                 horizontalalignment='right', verticalalignment='top', color='g')
+
+    def homogeneous_fromme_toworld(self):
+        # Calcula transformacion homogenea del Sistema=Self a World=None
+        frame2world = np.identity(3)
+        curFrame: ReferenceFrame = self
+        while curFrame is not None:
+            # Premultiplica transformaciones homogeneas
+            frame2world = curFrame.homogeneous_fromme_toparent() @ frame2world
+            curFrame = curFrame.parent
+        return frame2world
+
+    def homogeneous_fromworld_tome(self):
+        return np.linalg.inv(self.homogeneous_fromme_toworld())
+
+    def angle_fromworld(self):
+        angle = 0
+        curFrame: ReferenceFrame = self
+        while curFrame is not None:
+            angle += curFrame.pose.theta
+            curFrame = curFrame.parent
+        return angle
+
+
+def ej3a(showFig=False, saveFig=False):
+    refWorld = ReferenceFrame(x=0, y=0, theta=0, symbol=r"$W$", align='rt')
+    refA = ReferenceFrame(x=2, y=3, theta=np.deg2rad(45), parent=refWorld, symbol=r"$A$", align='lt')
+    refB = ReferenceFrame(x=1, y=1, theta=np.deg2rad(-45), parent=refA, symbol=r"$B$", align='lt')
+
+    p1 = Pose(x=1, y=5, referenceFrame=refWorld, symbol=r"$P1$")
+    p2 = Pose(x=1, y=2, referenceFrame=refA, symbol=r"$P2$")
+    # p3 = Pose(x=1, y=1, referenceFrame=refB, symbol=r"$P3$")
 
     ax = plt.axes()
     plt.xlim(-2, 5)
@@ -100,32 +132,32 @@ if __name__ == "__main__":
     ax.set_aspect('equal', 'box')
     plt.grid(visible=True, alpha=0.5)
 
-    plot_referenceFrame_fromWorld((0, 0, 0), ax, symbol="W", align='rt')  # Plot World
-    plot_referenceFrame_fromWorld(poseA_W, ax, symbol="A", align='lt')
-    plot_referenceFrame_fromWorld(poseB_A, ax, symbol="B", align='lt', refFrame_World=poseA_W)
-    # plot_referenceFrame_fromWorld(poseB_W, ax, symbol="B", align='rb')
-    plot_point(p1_W, ax, symbol=r"${}^Wp1$", align='rb')
-    # plot_point(p2_W, ax, symbol=r"${}^Wp2$", align='rb')
-    plot_point(p2_A, ax, symbol=r"${}^Ap2$", align='lc', refFrame_World=poseA_W)
-    # plot_point((1, 1), ax, symbol=r"$B$", align='lc', refFrame_World=poseA_W)
+    p1.drawPoseVector()
+    p2.drawPoseVector()
+    # p3.drawPoseVector()
+
+    refWorld.drawReferenceFrame()
+    refA.drawReferenceFrame()
+    refB.drawReferenceFrame()
 
     f = plt.gcf()
-    # f = ""
-    # plt.show(block=False)
-    if True:
-        print("Mostrar Figura? s/[N]: ")
-        if input() == "s":
-            plt.show(block=True)
-            plt.figure(f)
-        print("Guardar Figura? s/[N]: ")
-        if input() == "s":
-            plt.savefig("ej3a.png")
+    if showFig:
+        plt.show(block=True)
+        plt.figure(f)
+    if saveFig:
+        plt.savefig("ej3a.png", dpi=400)
 
     print("Item b _____________________________")
-    p2_W = (xi_A_W @ np.append(p2_A, 1))[0:2]
-    p1_A = (xi_W_A @ np.append(p1_W, 1))[0:2]
+    xi_fromW_toA = refA.homogeneous_fromworld_tome()
+    xi_fromA_toB = refB.homogeneous_fromparent_tome()
 
-    p2_B = (xi_W_B @ np.append(p2_W, 1))[0:2]
+    p1_A = (xi_fromW_toA @ p1.getPositionInhomogeneous())[0:2]
+    p2_B = (xi_fromA_toB @ p2.getPositionInhomogeneous())[0:2]
 
-    print("p1_W=" + str(p1_W) + " --> " + "p1_A=" + str(p1_A))
-    print("p2_A=" + str(p2_A) + " --> " + "p2_W=" + str(p2_W) + " --> " + "p2_B=" + str(p2_B))
+    print("p1_A=" + str(p1_A))
+    print("p2_B=" + str(p2_B))
+    print("poseB_fromW:\t" + str(refB.pose.getWorldCoords()))
+
+
+if __name__ == "__main__":
+    ej3a(showFig=True, saveFig=False)
