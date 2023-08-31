@@ -1,3 +1,4 @@
+# import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -154,10 +155,16 @@ def ej3a(showFig=False, saveFig=False):
     p1_A = (xi_fromW_toA @ p1.getPositionInhomogeneous())[0:2]
     p2_B = (xi_fromA_toB @ p2.getPositionInhomogeneous())[0:2]
 
+    print("xi_fromA_toW=\n" + str(refA.homogeneous_fromme_toparent()))
+    print("xi_fromW_toA=\n" + str(refA.homogeneous_fromparent_tome()))
+    print("xi_fromB_toA=\n" + str(refB.homogeneous_fromme_toparent()))
+    print("xi_fromA_toB=\n" + str(refB.homogeneous_fromparent_tome()))
+    print("xi_fromB_toW=\n" + str(refB.homogeneous_fromme_toworld()))
     print("p1_A=" + str(p1_A))
     print("p2_B=" + str(p2_B))
     print("poseB_fromW:\t" + str(refB.pose.getWorldCoords()))
 
 
 if __name__ == "__main__":
-    ej3a(showFig=True, saveFig=False)
+    ej3a(showFig=False, saveFig=False)
+    # input()
