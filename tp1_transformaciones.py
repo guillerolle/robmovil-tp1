@@ -78,12 +78,14 @@ def plot_IMU_and_Camera(tp: pd.DataFrame):
     """
     Graphs the IMU and Cam0 paths
     """
-    ax = plt.axes()
+    ax = plt.figure().add_subplot(projection='3d')
+    # ax = plt.axes()
     plt.xlabel(r"$x$")
     plt.ylabel(r"$y$")
     ax.set_aspect('equal', 'box')
     plt.grid(visible=True, alpha=0.5)
-
+    plt.plot(tp['x'], tp['y'], tp['z'])
+    plt.show()
     # TODO
 
 
