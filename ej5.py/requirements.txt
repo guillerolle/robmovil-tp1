@@ -1,0 +1,4 @@
+pandas
+transforms3d
+numpy
+matplotlib
