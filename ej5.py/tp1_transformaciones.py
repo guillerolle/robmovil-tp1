@@ -59,7 +59,7 @@ def transform_IMU_to_C(tp: pd.Series) -> pd.Series:
     R = t3d.quaternions.quat2mat(tp[['qw', 'qx', 'qy', 'qz']])
     t = np.array(tp[['x','y','z']])
     H = t3d.affines.compose(t, R, np.ones(3)) # Homogeneous
-    H2 = np.matmul(IMUTOC_T, H) # Transform
+    H2 = np.matmul(H, CTOIMU_T) # Transform
     H2_t, H2_R, _, _ = t3d.affines.decompose(H2)
     tp[['x','y','z','qw','qx','qy','qz']] = np.concatenate([H2_t, t3d.quaternions.mat2quat(H2_R)]).ravel()
     return tp
@@ -74,7 +74,7 @@ def transform_Nanoseconds_to_Seconds(tp: pd.Series) -> pd.Series:
     return tp
 
 
-def plot_IMU_and_Camera(imu_df: pd.DataFrame, cam_df: pd.DataFrame, outpath:Path):
+def plot_IMU_and_Camera(imu_df: pd.DataFrame, cam_df: pd.DataFrame, outpath:Path, debug: bool = False):
     """
     Graphs the IMU and Cam0 paths
     """
@@ -104,7 +104,39 @@ def plot_IMU_and_Camera(imu_df: pd.DataFrame, cam_df: pd.DataFrame, outpath:Path
     cam0_z = cam_df['z']
     ax.plot(cam0_x, cam0_y, cam0_z, color=color, label='Cam0', alpha=0.8)
 
+    def set_axes_equal(ax):
+        """
+        Make axes of 3D plot have equal scale so that spheres appear as spheres,
+        cubes as cubes, etc.
+
+        Input
+        ax: a matplotlib axis, e.g., as output from plt.gca().
+        """
+
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        # The plot bounding box is a sphere in the sense of the infinity
+        # norm, hence I call half the max range the plot radius.
+        plot_radius = 0.5*max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+    set_axes_equal(ax)
+
     plt.savefig(outpath / "ej5c.png", dpi=400)
+    if debug:
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -156,6 +188,6 @@ if __name__ == '__main__':
 
     # Graph the original and transformed path
     print("[[GRAPH]]")
-    plot_IMU_and_Camera(imu_dframe, cam_dframe, args.outpath)
+    plot_IMU_and_Camera(imu_dframe, cam_dframe, args.outpath, debug=args.debug)
 
     print("Done!")
