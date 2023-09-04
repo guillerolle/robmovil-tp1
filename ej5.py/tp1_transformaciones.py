@@ -184,7 +184,7 @@ if __name__ == '__main__':
     # Print first 5 rows of transformed ground-truth and save to csv
     print("[[NS TO S]]")
     print(cam_dframe2.head(6))
-    cam_dframe.to_csv(args.outpath / 'to_cam0_sec.csv', index=False, float_format='%.6f')
+    cam_dframe2.to_csv(args.outpath / 'to_cam0_sec.csv', index=False, float_format='%.6f')
 
     # Graph the original and transformed path
     print("[[GRAPH]]")
